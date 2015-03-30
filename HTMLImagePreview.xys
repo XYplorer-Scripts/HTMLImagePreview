@@ -1,0 +1,430 @@
+/*#############################################################################\
+HTMLImagePreview.xys
+
+Creates an HTML page for previewing and selecting images.
+
+[ABOUT]
+Author    = TheQwerty
+Version   = 1.2
+Date      = 2015-03-26 17:17z
+Requires  = XYplorer v15.00.0200
+
+[]
+\#############################################################################*/
+"&Preview Images||1 : imagePreview"
+  $sep = <crlf>;
+
+  // If less than 2 items are select use the list conents.
+  if (Get('CountSelected') < 2) {
+    $items = ListPane('a', '*', 1, $sep);
+  } else {
+    $items = Get('SelectedItemsPathNames', $sep);
+  }
+
+  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS
+      )
+  {
+    $filters = Get('GenericFileType', '{:Image}', <crlf>);
+  } else {
+    $filters = $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
+  }
+
+  if ($sep != <crlf>) {
+    $filters = Replace($filters, <crlf>, $sep);
+  }
+
+  $images = FormatList($items, 'deft', $sep, $filters);
+  $imageCnt = GetToken($images, 'Count', $sep);
+
+  // End if there's nothing to see...
+  End $imageCnt < 1, 'No images to display.';
+
+  // Cap the number of images - otherwise building the HTML freezes XY.
+  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT
+      )
+  {
+    $limit = 512;
+  } else {
+    $limit = $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT;
+  }
+
+  if ($imageCnt > $limit) {
+    $images = GetToken($images, $limit, $sep,, 1);
+    $limitDiv = <<<LIMITMSG
+<div id='warning'>Sorry, display has been limited to the first $limit images (of $imageCnt).</div>
+LIMITMSG;
+  } else {
+    $s = $imageCnt == 1 ? '' : 's';
+    $limitDiv = <<<LIMITMSG
+<div>$imageCnt image$s.</div>
+LIMITMSG;
+  }
+
+  // Build up the div blocks for each image.
+  $imageDivs = '';
+  foreach ($image, $images, $sep) {
+    if ($image == '') { continue; }
+    $title = UrlEncode(Replace(GetPathComponent($image, 'file'), ' ', '&nbsp;'));
+    $name = UrlEncode($image, 1);
+
+    $imageDivs = <<<IMAGEDIV
+$imageDivs
+      <div class='box'>
+        <input class='cb' type="checkbox" name='$name' id='$name'>
+          <label class='boxInner' for='$name'>
+            <img src='$image' />
+            <div class='titleBox'>$title</div>
+          </label>
+      </input>
+      </div>
+IMAGEDIV;
+  }
+
+  if  (    IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS
+      )
+  {
+    $colors = $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
+  } else {
+    $colors = '#EEE|#DDD|#AAF';
+  }
+
+  $bodyBGColor = GetToken($colors, 1, '|', 't');
+  $thumbBGColor = GetToken($colors, 2, '|', 't');
+  $selColor = GetToken($colors, 3, '|', 't');
+
+  // Build up the HTML document.
+  $html = <<<HTMLDOCUMENT
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv='x-ua-compatible' content='IE=edge'></meta>
+
+    <!-- Enable responsive view on mobile devices -->
+    <meta name='viewport' content='width=device-width, initial-scale=1.0' />
+
+    <style type='text/css'>
+      body {
+        margin: 0;
+        padding-left: 0;
+        padding-right: 0;
+        padding-top: 0;
+        padding-bottom: 250px;
+        background: $bodyBGColor;
+      }
+      .wrap {
+        overflow: hidden;
+        margin: 10px;
+      }
+      input.cb {
+        position:relative;
+        z-index:1;
+      }
+      input.cb:checked ~ label {
+        background: $selColor;
+      }
+      input.cb:checked ~ label img {
+        opacity: 0.50;
+      }
+      #warning {
+        padding:10px;
+        background: #FAA;
+        font-color: #A00;
+      }
+      form {
+        position:relative;
+      }
+      .buttons {
+        position:fixed;
+        left:0;
+        right:0;
+        bottom:0;
+        height:32px;
+        text-align:right;
+        padding: 8px;
+        background: $bodyBGColor;
+        z-index:2;
+      }
+      #submit {
+        margin-left:20px;
+      }
+      .box {
+        float: left;
+        position: relative;
+        width: 20%;
+        padding-bottom: 200%;
+      }
+      .boxInner {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        top: 10px;
+        bottom: 10px;
+        overflow: hidden;
+        <!-- new -->
+        vertical-align:middle;
+        text-align:center;
+        background: $thumbBGColor;
+      }
+      .boxInner img {
+        max-width: 100%;
+        max-height: 100%;
+      }
+      .boxInner .titleBox {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        margin-bottom: -50px;
+        background: #000;
+        background: rgba(0, 0, 0, 0.5);
+        color: #FFF;
+        padding: 2px;
+        text-align: center;
+        -webkit-transition: all 0.3s ease-out;
+        -moz-transition: all 0.3s ease-out;
+        -o-transition: all 0.3s ease-out;
+        transition: all 0.3s ease-out;
+      }
+      body.no-touch .boxInner:hover .titleBox, body.touch .boxInner.touchFocus .titleBox {
+        margin-bottom: 0;
+      }
+      @media only screen and (max-width : 480px) {
+        /* Smartphone view: 1 tile */
+        .box {
+          width: 100%;
+          padding-bottom: 60%;
+        }
+      }
+      @media only screen and (max-width : 650px) and (min-width : 481px) {
+        /* Tablet view: 2 tiles */
+        .box {
+          width: 50%;
+          padding-bottom: 30%;
+        }
+      }
+      @media only screen and (max-width : 1050px) and (min-width : 651px) {
+        /* Small desktop / ipad view: 3 tiles */
+        .box {
+          width: 33.3%;
+          padding-bottom: 20%;
+        }
+      }
+      @media only screen and (max-width : 1290px) and (min-width : 1051px) {
+        /* Medium desktop: 4 tiles */
+        .box {
+          width: 25%;
+          padding-bottom: 15%;
+        }
+      }
+      @media only screen and (min-width : 1291px) {
+        .box {
+          width: 20%;
+          padding-bottom: 12%;
+        }
+      }
+    </style>
+  </head>
+  <script>
+    function check(v) {
+      var a = document.getElementsByTagName('input');
+      for(var i=0,j=a.length;i<j;i++){
+        if (a[i].type == 'checkbox'){
+          a[i].checked = v;
+        }
+      }
+    }
+
+    function invert() {
+      var a = document.getElementsByTagName('input');
+      for(var i=0,j=a.length;i<j;i++){
+        if (a[i].type == 'checkbox'){
+          a[i].checked = !a[i].checked;
+        }
+      }
+    }
+
+    function checkAll() { check(true); }
+    function checkNone() { check(false); }
+  </script>
+  <body class='no-touch'>
+    $limitDiv
+    <form action='xys:' method='get'>
+      <div class='wrap'>
+$imageDivs
+      </div>
+      <div class='buttons'>
+        <input type='button' value='All' onclick='checkAll();' />
+        <input type='button' value='None' onclick='checkNone();' />
+        <input type='button' value='Invert' onclick='invert();' />
+        <input type='submit' value='OK' id='submit' />
+      </div>
+    </form>
+    <script>
+      // Focus submit button.
+      document.getElementById('submit').focus();
+
+      // Make clicking images toggle their checkbox.
+      var a = document.getElementsByTagName('label');
+      for(var i=0,j=a.length;i<j;i++){
+        var b = a[i].getElementsByTagName('img');
+        for(var k=0,l=b.length;k<l;k++){
+          b[k].forid = a[i].htmlFor;
+          b[k].onclick = function(){
+            var e = document.getElementById(this.forid);
+            e.checked = !e.checked;
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
+HTMLDOCUMENT;
+
+  if  (  ! IsSet($P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE)
+        && '' != $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE
+      )
+  {
+    $size = '50%x50%';
+  } else {
+    $size = $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
+  }
+  $width = GetToken($size, 1, 'x', 't');
+  $height = GetToken($size, 2, 'x', 't');
+  $caption = 'Select Images';
+
+  // The crap we do to get some decent rendering from WebBrowser :rolls:
+  // To get it to obey the x-ua-compatible the content must be saved to a file.
+  $htmlFile = "%tmp%\XYImages-<date yyyymmddhhnnss>.html";
+  if (WriteFile($htmlFile, $html, 'o') % 2 == 1) {
+    $result = html($htmlFile, $width, $height, $caption);
+    delete 1, 0, $htmlFile;
+  } else {
+    $result = html($html, $width, $height, $caption);
+  }
+
+  // Select selected images.
+  $result = SubStr($result, 1, StrLen($result)-4);
+  $result = Replace($result, '=on&', '|');
+  $result = urldecode(urldecode($result, 1));
+  if ($result != '') {
+    selectitems $result;
+    $cnt = Get('CountSelected');
+    Status 'Selected ' . $cnt . ' item' . (($cnt == 1) ? '' : 's') . '.',, 'ready';
+  }
+
+
+"- : _-" //---------------------------------------------------------------------
+
+
+"Adjust &Filters : _adjustFilters"
+  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS
+      )
+  {
+    $filters = Get('GenericFileType', '{:Image}', <crlf>);
+  } else {
+    $filters = $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
+  }
+
+  $filters = Input('Images Filters', 'One filter per line. Delete all to use defaults.', $filters, 'm');
+  $filters = FormatList($filters, 'dents', <crlf>);
+
+  if ($filters == '') {
+    unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
+  } else {
+    perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS = $filters;
+  }
+
+
+"Adjust Preview &Size : _adjustSize"
+  if  (  ! IsSet($P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE)
+        && '' != $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE
+      )
+  {
+    $size = '50%x50%';
+  } else {
+    $size = $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
+  }
+
+  $width = GetToken($size, 1, 'x', 't');
+  $height = GetToken($size, 1, 'x', 't');
+
+  $width = Input('Preview Window Width', <<<MSG
+Width of window in pixels.
+Percentages of screen are also supported.
+Set to 50% to use default.
+MSG
+  , $width, 's');
+  $height = Input('Preview Window Height', <<<MSG
+Height of window in pixels.
+Percentages of screen are also supported.
+Set to 50% to use default.
+MSG
+  , $height, 's');
+
+  $size = $width . 'x' . $height;
+  $size = RegexReplace($size, '[^0-9x%]');
+
+  if ($size == '50%x50%') {
+    unset $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
+  } else {
+    perm $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE = $size;
+  }
+
+
+"Adjust &Colors : _adjustColors"
+  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS)
+        && '' != $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE
+      )
+  {
+    $colors = '#EEE|#DDD|#AAF';
+  } else {
+    $colors = $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
+  }
+
+  $body = GetToken($colors, 1, '|', 't');
+  $thumb = GetToken($colors, 2, '|', 't');
+  $sel = GetToken($colors, 3, '|', 't');
+
+  $body = Input('Window Background Color', 'Set to #EEE to use default.', $body, 's');
+  $thumb = Input('Thumb Background Color', 'Set to #DDD to use default.', $thumb, 's');
+  $sel = Input('Selected Color', 'Set to #AAF to use default.', $sel, 's');
+
+  $colors = Recase("$body|$thumb|$sel", 'Upper');
+  if ($colors == '#EEE|#DDD|#AAF') {
+    unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
+  } else {
+    perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS = $colors;
+  }
+
+
+"Adjust &Maximum Image Count : _adjustCap"
+  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT
+      )
+  {
+    $limit = 512;
+  } else {
+    $limit = $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT;
+  }
+
+  $limit = Input('Maximum Images to Display', 'Set to 512 to use default.', $limit, 's');
+  $limit = RegexReplace($limit, '[^0-9]');
+
+  if ($limit == 512) {
+    unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT;
+  } else {
+    perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT = $limit;
+  }
+
+"- : _-" //---------------------------------------------------------------------
+
+
+"&Reset All to Defaults : _resetToDefaults"
+  unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
+  unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
+  unset $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
+  unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT;
