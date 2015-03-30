@@ -5,60 +5,77 @@ Creates an HTML page for previewing and selecting images.
 
 [ABOUT]
 Author    = TheQwerty
-Version   = 1.2
-Date      = 2015-03-26 17:17z
-Requires  = XYplorer v15.00.0200
+Version   = 1.3
+Date      = 2015-03-30 18:00z
+Requires  = XYplorer v15.00.0000
+Source    = https://github.com/XYplorer-Scripts/HTMLImagePreview
 
 []
 \#############################################################################*/
+
+
+/*******************************************************************************
+** Preview Images
+**   Displays a preview for the specified, selected, or listed images.
+*******************************************************************************/
 "&Preview Images||1 : imagePreview"
+  // ----- PARAMETERS ----------------------------------------------------------
+  // IN: G_IMAGES [optional]
+  //   A CRLF-separated list of images to preview.
+  //   If omitted and more than 2 items are selected, the selection is used.
+  //   Otherwise the list contents will be shown.
+  Global $G_IMAGES;
+  // ----- END PARAMETERS ------------------------------------------------------
+
+  // Get options.
+  Sub '_getOptions';
+  Global $G_FILTERS, $G_PREVIEW_SIZE, $G_COLORS, $G_IMAGE_LIMIT;
+
+
   $sep = <crlf>;
 
-  // If less than 2 items are select use the list conents.
-  if (Get('CountSelected') < 2) {
-    $items = ListPane('a', '*', 1, $sep);
+  $source = '';
+
+  // Get images.
+  if ($G_IMAGES != '' && $G_IMAGES LikeI "*$sep*") {
+    // Use global image list.
+    $source = ' specified';
+    $images = FormatList($G_IMAGES, 'det', $sep);
   } else {
-    $items = Get('SelectedItemsPathNames', $sep);
-  }
+    // If less than 2 items are selected use the list contents.
+    if (Get('CountSelected') < 2) {
+      $source = ' listed';
+      $items = ListPane('a', '*', 1, $sep);
+    } else {
+      $source = ' selected';
+      $items = Get('SelectedItemsPathNames', $sep);
+    }
 
-  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS)
-        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS
-      )
-  {
-    $filters = Get('GenericFileType', '{:Image}', <crlf>);
-  } else {
-    $filters = $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
-  }
+    // Stored options are CRLF-separated, convert to local $sep.
+    if ($sep != <crlf>) {
+      $filters = Replace($G_FILTERS, <crlf>, $sep);
+    } else {
+      $filters = $G_FILTERS;
+    }
 
-  if ($sep != <crlf>) {
-    $filters = Replace($filters, <crlf>, $sep);
+    // Filter the list of items to just the images.
+    $images = FormatList($items, 'deft', $sep, $filters);
   }
-
-  $images = FormatList($items, 'deft', $sep, $filters);
-  $imageCnt = GetToken($images, 'Count', $sep);
 
   // End if there's nothing to see...
+  $imageCnt = GetToken($images, 'Count', $sep);
   End $imageCnt < 1, 'No images to display.';
 
   // Cap the number of images - otherwise building the HTML freezes XY.
-  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT)
-        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT
-      )
-  {
-    $limit = 512;
-  } else {
-    $limit = $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT;
-  }
-
-  if ($imageCnt > $limit) {
-    $images = GetToken($images, $limit, $sep,, 1);
+  if ($imageCnt > $G_IMAGE_LIMIT) {
+    $images = GetToken($images, $G_IMAGE_LIMIT, $sep,, 1);
     $limitDiv = <<<LIMITMSG
-<div id='warning'>Sorry, display has been limited to the first $limit images (of $imageCnt).</div>
+<div id='warning'>Sorry, display has been limited to the first $G_IMAGE_LIMIT$source images (of $imageCnt).</div>
 LIMITMSG;
   } else {
     $s = $imageCnt == 1 ? '' : 's';
     $limitDiv = <<<LIMITMSG
-<div>$imageCnt image$s.</div>
+<div>$imageCnt$source image$s.</div>
 LIMITMSG;
   }
 
@@ -66,34 +83,28 @@ LIMITMSG;
   $imageDivs = '';
   foreach ($image, $images, $sep) {
     if ($image == '') { continue; }
-    $title = UrlEncode(Replace(GetPathComponent($image, 'file'), ' ', '&nbsp;'));
-    $name = UrlEncode($image, 1);
+    // Get & escape file name.
+    $title = ReplaceList(GetPathComponent($image, 'file'), '&', '&amp;', '|');
+    // Escape file path.
+    $image = Replace($image, '&', '&amp;');
 
     $imageDivs = <<<IMAGEDIV
 $imageDivs
-      <div class='box'>
-        <input class='cb' type="checkbox" name='$name' id='$name'>
-          <label class='boxInner' for='$name'>
-            <img src='$image' />
-            <div class='titleBox'>$title</div>
-          </label>
-      </input>
-      </div>
+        <div class='box'>
+          <input class='cb' type='checkbox' name="$image" id="$image">
+            <label class='boxInner' for="$image">
+              <img src="$image" />
+              <div class='titleBox'>$title</div>
+            </label>
+          </input>
+        </div>
 IMAGEDIV;
   }
 
-  if  (    IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS)
-        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS
-      )
-  {
-    $colors = $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
-  } else {
-    $colors = '#EEE|#DDD|#AAF';
-  }
-
-  $bodyBGColor = GetToken($colors, 1, '|', 't');
-  $thumbBGColor = GetToken($colors, 2, '|', 't');
-  $selColor = GetToken($colors, 3, '|', 't');
+  // Split up the color options.
+  $bodyBGColor  = GetToken($G_COLORS, 1, '|', 't');
+  $thumbBGColor = GetToken($G_COLORS, 2, '|', 't');
+  $selColor     = GetToken($G_COLORS, 3, '|', 't');
 
   // Build up the HTML document.
   $html = <<<HTMLDOCUMENT
@@ -177,18 +188,19 @@ IMAGEDIV;
         bottom: 0;
         left: 0;
         right: 0;
-        margin-bottom: -50px;
+        margin-bottom: -100px;
         background: #000;
         background: rgba(0, 0, 0, 0.5);
         color: #FFF;
         padding: 2px;
         text-align: center;
-        -webkit-transition: all 0.3s ease-out;
-        -moz-transition: all 0.3s ease-out;
-        -o-transition: all 0.3s ease-out;
-        transition: all 0.3s ease-out;
+        -webkit-transition: all 0.5s ease-out;
+        -moz-transition: all 0.5s ease-out;
+        -o-transition: all 0.5s ease-out;
+        transition: all 0.5s ease-out;
       }
-      body.no-touch .boxInner:hover .titleBox, body.touch .boxInner.touchFocus .titleBox {
+      body.no-touch .boxInner:hover .titleBox,
+      body.touch .boxInner.touchFocus .titleBox {
         margin-bottom: 0;
       }
       @media only screen and (max-width : 480px) {
@@ -253,7 +265,7 @@ IMAGEDIV;
     $limitDiv
     <form action='xys:' method='get'>
       <div class='wrap'>
-$imageDivs
+        $imageDivs
       </div>
       <div class='buttons'>
         <input type='button' value='All' onclick='checkAll();' />
@@ -283,16 +295,9 @@ $imageDivs
 </html>
 HTMLDOCUMENT;
 
-  if  (  ! IsSet($P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE)
-        && '' != $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE
-      )
-  {
-    $size = '50%x50%';
-  } else {
-    $size = $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
-  }
-  $width = GetToken($size, 1, 'x', 't');
-  $height = GetToken($size, 2, 'x', 't');
+  // Determine window size.
+  $width  = GetToken($G_PREVIEW_SIZE, 1, 'x', 't');
+  $height = GetToken($G_PREVIEW_SIZE, 2, 'x', 't');
   $caption = 'Select Images';
 
   // The crap we do to get some decent rendering from WebBrowser :rolls:
@@ -306,125 +311,349 @@ HTMLDOCUMENT;
   }
 
   // Select selected images.
-  $result = SubStr($result, 1, StrLen($result)-4);
-  $result = Replace($result, '=on&', '|');
-  $result = urldecode(urldecode($result, 1));
+  $result = UrlDecode($result);
+  $result = RegexReplace($result, '\?|=on&?', '|');
+  $result = FormatList($result, 'dents', '|');
+
   if ($result != '') {
-    selectitems $result;
+    SelectItems $result, 2, 1, 'n', 'a';
     $cnt = Get('CountSelected');
     Status 'Selected ' . $cnt . ' item' . (($cnt == 1) ? '' : 's') . '.',, 'ready';
   }
+/*********************************************************** END imagePreview */
 
 
 "- : _-" //---------------------------------------------------------------------
 
 
+/*******************************************************************************
+** Display Current Settings
+**   Shows the current script configuration settings.
+*******************************************************************************/
+"&Display Current Settings : _showOptions"
+  // Get Defaults
+  Sub '_getDefaults';
+  Global $G_FILTERS, $G_PREVIEW_SIZE, $G_COLORS, $G_COLOR_TITLES, $G_IMAGE_LIMIT;
+  $dFilters = $G_FILTERS;
+  $dWidth = GetToken($G_PREVIEW_SIZE, 1, 'x', 't');
+  $dHeight = GetToken($G_PREVIEW_SIZE, 2, 'x', 't');
+  $dColors = $G_COLORS;
+  $dLimit = $G_IMAGE_LIMIT;
+
+  // Get Current
+  Sub '_getOptions';
+
+  $defaultMarker = "<tab>[DEFAULT]";
+
+  // Split window size.
+  $width = GetToken($G_PREVIEW_SIZE, 1, 'x', 't');
+  $dWidth = $width == $dWidth ? $defaultMarker : '';
+
+  $height = GetToken($G_PREVIEW_SIZE, 2, 'x', 't');
+  $dHeight = $height == $dHeight ? $defaultMarker : '';
+
+  // Split colors.
+  $colors = '';
+  $i = 1;
+  $c = GetToken($G_COLORS, 'Count', '|');
+  while ($i <= $c) {
+    $title = GetToken($G_COLOR_TITLES, $i, '|', 't');
+    $color = GetToken($G_COLORS, $i, '|', 't');
+
+    // Add color
+    if ($colors != '') {
+      $colors = $colors . <crlf>;
+    }
+    $colors = $colors . $title . ' Color: ' . $color;
+
+    // Add default marker.
+    $dColor = GetToken($dColors, $i, '|', 't');
+    if ($color == $dColor) {
+      $colors = $colors . $defaultMarker;
+    }
+
+    $i++;
+  }
+
+  // Limit
+  $dLimit = $G_IMAGE_LIMIT == $dLimit ? $defaultMarker : '';
+
+  // Filters
+  $dFilters = $G_FILTERS == $dFilters ? $defaultMarker : '';
+
+  Text <<<TEXT
+Current HTML Image Preview Settings
+
+Window Width: $width$dWidth
+Window Height: $height$dHeight
+
+$colors
+
+Image Limit: $G_IMAGE_LIMIT$dLimit
+
+Filters: $dFilters
+$G_FILTERS
+TEXT;
+/********************************************************** END _showOptions */
+
+
+"- : _-" //---------------------------------------------------------------------
+
+
+/*******************************************************************************
+** Adjust Filters
+**   Allows user to configure the list of filters used for determining what
+**   files are images and should be displayed.
+**
+**   Generally, this should be set to all images that the system can display
+**   within Internet Explorer.
+*******************************************************************************/
 "Adjust &Filters : _adjustFilters"
-  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS)
+  // Get default value.
+  Sub '_getDefaults';
+  Global $G_FILTERS;
+
+  // Get curent value.
+  if  (   IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS)
         && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS
       )
   {
-    $filters = Get('GenericFileType', '{:Image}', <crlf>);
-  } else {
     $filters = $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
+  } else {
+    $filters = $G_FILTERS;
   }
 
+  // Prompt user.
   $filters = Input('Images Filters', 'One filter per line. Delete all to use defaults.', $filters, 'm');
-  $filters = FormatList($filters, 'dents', <crlf>);
 
-  if ($filters == '') {
+  // Clean up filters.
+  $filters = FormatList($filters, 'dents', <crlf>);
+  $default = FormatList($G_FILTERS, 'dents', <crlf>);
+
+  // Update stored value.
+  if ($filters == '' || $filters == $default) {
     unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
+    Status 'Set image filters to defaults.',, 'ready';
   } else {
     perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS = $filters;
+    Status 'Set image filters.',, 'ready';
   }
+/******************************************************** END _adjustFilters */
 
 
-"Adjust Preview &Size : _adjustSize"
-  if  (  ! IsSet($P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE)
+/*******************************************************************************
+** Adjust Size of Preview Window
+**   Allows user to configure the size of the preview window.
+*******************************************************************************/
+"Adjust &Size of Preview Window : _adjustSize"
+  // Get default value.
+  Sub '_getDefaults';
+  Global $G_PREVIEW_SIZE;
+
+  // Get current value.
+  if  (   IsSet($P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE)
         && '' != $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE
       )
   {
-    $size = '50%x50%';
-  } else {
     $size = $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
+  } else {
+    $size = $G_PREVIEW_SIZE;
   }
 
-  $width = GetToken($size, 1, 'x', 't');
-  $height = GetToken($size, 1, 'x', 't');
-
-  $width = Input('Preview Window Width', <<<MSG
-Width of window in pixels.
+  // Prompt user.
+  $size = Input('Preview Window Size', <<<MSG
+Width x Height of Preview Window in pixels.
 Percentages of screen are also supported.
-Set to 50% to use default.
+Default value is $G_PREVIEW_SIZE.
 MSG
-  , $width, 's');
-  $height = Input('Preview Window Height', <<<MSG
-Height of window in pixels.
-Percentages of screen are also supported.
-Set to 50% to use default.
-MSG
-  , $height, 's');
+  , $size, 's');
 
-  $size = $width . 'x' . $height;
+  // Validate.
   $size = RegexReplace($size, '[^0-9x%]');
 
-  if ($size == '50%x50%') {
+  // Update stored value.
+  if ($size == '' || $size == $G_PREVIEW_SIZE || $size UnLikeI '*x*') {
     unset $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
+    Status 'Set preview window size to default: ' . $G_PREVIEW_SIZE,, 'ready';
   } else {
     perm $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE = $size;
+    Status 'Set preview window size to: ' . $size,, 'ready';
   }
+/*********************************************************** END _adjustSize */
 
 
+/*******************************************************************************
+** Adjust Colors
+**   Allows user to configure the colors used in the preview.
+*******************************************************************************/
 "Adjust &Colors : _adjustColors"
-  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS)
-        && '' != $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE
+  // Get default value.
+  Sub '_getDefaults';
+  Global $G_COLORS;
+  Global $G_COLOR_TITLES;
+
+  // Get current value.
+  if  (   IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS
       )
   {
-    $colors = '#EEE|#DDD|#AAF';
-  } else {
     $colors = $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
-  }
-
-  $body = GetToken($colors, 1, '|', 't');
-  $thumb = GetToken($colors, 2, '|', 't');
-  $sel = GetToken($colors, 3, '|', 't');
-
-  $body = Input('Window Background Color', 'Set to #EEE to use default.', $body, 's');
-  $thumb = Input('Thumb Background Color', 'Set to #DDD to use default.', $thumb, 's');
-  $sel = Input('Selected Color', 'Set to #AAF to use default.', $sel, 's');
-
-  $colors = Recase("$body|$thumb|$sel", 'Upper');
-  if ($colors == '#EEE|#DDD|#AAF') {
-    unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
   } else {
-    perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS = $colors;
+    $colors = $G_COLORS;
   }
 
+  $sep = '|';
 
+  $newColors = '';
+
+  // For each color...
+  $i = 1;
+  $c = GetToken($G_COLORS, 'Count', $sep);
+  while ($i <= $c) {
+    // Get this color's info.
+    $title   = GetToken($G_COLOR_TITLES, $i, $sep, 't');
+    $default = GetToken($G_COLORS      , $i, $sep, 't');
+    $current = GetToken($colors        , $i, $sep, 't');
+
+    // Prompt user.
+    $res = Input($i . ': ' . $title . ' Color', "Default value is $default.", $current, 's');
+
+    // Validate
+    $res = Trim($res, " <tab>");
+    if ($res == '') {
+      $res = $default;
+    }
+
+    // Build up option string.
+    if ($newColors != '') {
+      $newColors = $newColors . $sep;
+    }
+    $newColors = $newColors . $res;
+
+    $i++;
+  }
+
+  // Clean up value.
+  $newColors = Recase($newColors, 'Upper');
+
+  // Update stored value.
+  if ($newColors == '' || $newColors == $G_COLORS) {
+    unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
+    Status 'Set colors to default: ' . $G_COLORS,, 'ready';
+  } else {
+    perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS = $newColors;
+    Status 'Set colors to: ' . $newColors,, 'ready';
+  }
+/********************************************************* END _adjustColors */
+
+
+/*******************************************************************************
+** Adjust Maximum Image Count
+**   Allows user to configure the cap on the maximum number of images which
+**   will be shown.
+*******************************************************************************/
 "Adjust &Maximum Image Count : _adjustCap"
-  if  (  ! IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT)
+  // Get default value.
+  Sub '_getDefaults';
+  Global $G_IMAGE_LIMIT;
+
+  // Get current value.
+  if  (   IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT)
         && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT
       )
   {
-    $limit = 512;
-  } else {
     $limit = $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT;
+  } else {
+    $limit = $G_IMAGE_LIMIT;
   }
 
-  $limit = Input('Maximum Images to Display', 'Set to 512 to use default.', $limit, 's');
+  // Prompt user.
+  $limit = Input('Maximum Number of Images to Preview', "Default value is $G_IMAGE_LIMIT.", $limit, 's');
+
+  // Validate
   $limit = RegexReplace($limit, '[^0-9]');
 
-  if ($limit == 512) {
+  // Update stored value.
+  if ($limit == '' || $limit == $G_IMAGE_LIMIT || $limit < 1) {
     unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT;
+    Status 'Set image limit to default: ' . $G_IMAGE_LIMIT,, 'ready';
   } else {
     perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT = $limit;
+    Status 'Set image limit to: ' . $limit,, 'ready';
   }
+/************************************************************ END _adjustCap */
+
 
 "- : _-" //---------------------------------------------------------------------
 
 
+/*******************************************************************************
+** Reset All to Defaults
+**   Resets all configuration options to their defaults.
+*******************************************************************************/
 "&Reset All to Defaults : _resetToDefaults"
   unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
   unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
   unset $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
   unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT;
+  Status 'Set all options to their defaults.',, 'ready';
+/******************************************************* END _resetToDefaults */
+
+
+"_-" //-------------------------------------------------------------------------
+"_-" //-------------------------------------------------------------------------
+
+
+/*******************************************************************************
+** _getDefaults
+**   Retrieves the default configuration options.
+*******************************************************************************/
+"_getDefaults"
+  Global $G_FILTERS = Get('GenericFileType', '{:Image}', <crlf>);
+  Global $G_PREVIEW_SIZE = '50%x50%';
+  Global $G_COLORS = '#EEE|#DDD|#AAF';
+  Global $G_COLOR_TITLES = 'Window Background|Thumb Background|Selected Image(s)';
+  Global $G_IMAGE_LIMIT = 512;
+/*********************************************************** END _getDefaults */
+
+
+/*******************************************************************************
+** _getOptions
+**   Retrieves the current configuration options.
+*******************************************************************************/
+"_getOptions"
+  // Get defaults.
+  Sub '_getDefaults';
+
+  // Image Filters
+  if  (   IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS
+      )
+  {
+    Global $G_FILTERS = $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
+  }
+
+  // Preview Window Size
+  if  (   IsSet($P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE)
+        && '' != $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE
+      )
+  {
+    Global $G_PREVIEW_SIZE = $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
+  }
+
+  // Colors
+  if  (   IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS
+      )
+  {
+    Global $G_COLORS = $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS;
+  }
+
+  // Image Limit
+  if  (   IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT
+      )
+  {
+    Global $G_IMAGE_LIMIT = $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT;
+  }
+/************************************************************ END _getOptions */

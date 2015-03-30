@@ -27,6 +27,12 @@ This script generates an HTML file to quickly preview images, and allows selecti
 ----------
 
 #### Release Notes
++ v 1.3 - 2015-03-30 18:00z
+    - Fixes problems with escaping quotes and ampersands.
+    - Fixes titlebox being too small.
+    - Adds global for calling scripts to specify images.
+    - Adds option to show current configuration.
+    - Adds better commenting/style.
 + v 1.2 - 2015-03-26 17:17z
     - Fixes window size option.
 + v 1.1 - 2015-03-26 14:50z
