@@ -5,8 +5,8 @@ Creates an HTML page for previewing and selecting images.
 
 [ABOUT]
 Author    = TheQwerty
-Version   = 2.0
-Date      = 2015-03-31 15:00z
+Version   = 2.1
+Date      = 2015-03-31 17:50z
 Requires  = XYplorer v15.00.0000
 Source    = https://github.com/XYplorer-Scripts/HTMLImagePreview
 
@@ -20,12 +20,18 @@ Source    = https://github.com/XYplorer-Scripts/HTMLImagePreview
 *******************************************************************************/
 "&Preview Images||1 : showPreview"
   // ----- PARAMETERS ----------------------------------------------------------
+  // IN: G_ITEMS [optional]
+  //   A CRLF-separated list of items to filter and preview.
+  //   If omitted and more than 2 items are selected, the selection is used.
+  //   Otherwise the list contents will be shown.
+  Global $G_ITEMS;
+
   // IN: G_IMAGES [optional]
   //   A CRLF-separated list of images to preview.
   //   If omitted and more than 2 items are selected, the selection is used.
   //   Otherwise the list contents will be shown.
-  //   Note that setting this variable bypasses any filtering including any
-  //   specified by G_FILTERS_OVERRIDE.
+  //   Note that setting this variable bypasses any filtering including those
+  //   specified by G_FILTERS_OVERRIDE and this takes precedence over G_ITEMS.
   Global $G_IMAGES;
 
   // IN: G_FILTERS_OVERRIDE [optional]
@@ -54,13 +60,19 @@ Source    = https://github.com/XYplorer-Scripts/HTMLImagePreview
     $images = ReplaceList($G_IMAGES, "| <crlf>", $sep, ' ');
     $images = FormatList($images, 'det', $sep);
   } else {
-    // If less than 2 items are selected use the list contents.
-    if (Get('CountSelected') < 2) {
-      $source = ' listed';
-      $items = ListPane('a', '*', 1, $sep);
-    } else {
+    if ($G_ITEMS != '') {
+      // Use specified items.
+      $source = ' specified';
+      $items = ReplaceList($G_ITEMS, "| <crlf>", $sep, ' ');
+      $items = FormatList($items, 'det', $sep);
+    } elseif (Get('CountSelected') > 1) {
+      // Use current selection.
       $source = ' selected';
       $items = Get('SelectedItemsPathNames', $sep);
+    } else {
+      // Use list contents.
+      $source = ' listed';
+      $items = ListPane('a', '*', 1, $sep);
     }
 
     // Determine which filters to use.
