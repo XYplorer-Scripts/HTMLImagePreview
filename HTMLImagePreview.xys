@@ -5,8 +5,8 @@ Creates an HTML page for previewing and selecting images.
 
 [ABOUT]
 Author    = TheQwerty
-Version   = 1.3
-Date      = 2015-03-30 18:00z
+Version   = 2.0
+Date      = 2015-03-31 15:00z
 Requires  = XYplorer v15.00.0000
 Source    = https://github.com/XYplorer-Scripts/HTMLImagePreview
 
@@ -18,29 +18,41 @@ Source    = https://github.com/XYplorer-Scripts/HTMLImagePreview
 ** Preview Images
 **   Displays a preview for the specified, selected, or listed images.
 *******************************************************************************/
-"&Preview Images||1 : imagePreview"
+"&Preview Images||1 : showPreview"
   // ----- PARAMETERS ----------------------------------------------------------
   // IN: G_IMAGES [optional]
   //   A CRLF-separated list of images to preview.
   //   If omitted and more than 2 items are selected, the selection is used.
   //   Otherwise the list contents will be shown.
+  //   Note that setting this variable bypasses any filtering including any
+  //   specified by G_FILTERS_OVERRIDE.
   Global $G_IMAGES;
+
+  // IN: G_FILTERS_OVERRIDE [optional]
+  //   A CRLF, semicolon (;), or pipe (|) separated list of filters to use
+  //   instead of the configured ones.
+  //   If omitted the configured filters or generic {:Image} file type are used.
+  Global $G_FILTERS_OVERRIDE;
+
+  // OUT: G_RESULTS
+  //   A |-separated list of  images the user selected in the preview.
+  Global $G_RESULTS = '';
   // ----- END PARAMETERS ------------------------------------------------------
 
   // Get options.
   Sub '_getOptions';
   Global $G_FILTERS, $G_PREVIEW_SIZE, $G_COLORS, $G_IMAGE_LIMIT;
 
-
   $sep = <crlf>;
 
   $source = '';
 
   // Get images.
-  if ($G_IMAGES != '' && $G_IMAGES LikeI "*$sep*") {
+  if ($G_IMAGES != '') {
     // Use global image list.
     $source = ' specified';
-    $images = FormatList($G_IMAGES, 'det', $sep);
+    $images = ReplaceList($G_IMAGES, "| <crlf>", $sep, ' ');
+    $images = FormatList($images, 'det', $sep);
   } else {
     // If less than 2 items are selected use the list contents.
     if (Get('CountSelected') < 2) {
@@ -51,11 +63,16 @@ Source    = https://github.com/XYplorer-Scripts/HTMLImagePreview
       $items = Get('SelectedItemsPathNames', $sep);
     }
 
-    // Stored options are CRLF-separated, convert to local $sep.
-    if ($sep != <crlf>) {
-      $filters = Replace($G_FILTERS, <crlf>, $sep);
-    } else {
+    // Determine which filters to use.
+    if ($G_FILTERS_OVERRIDE == '') {
       $filters = $G_FILTERS;
+    } else {
+      $filters = ReplaceList($G_FILTERS_OVERRIDE, '; |', <crlf>, ' ');
+    }
+
+    // Stored filters are CRLF-separated, convert to local $sep.
+    if ($sep != <crlf>) {
+      $filters = Replace($filters, <crlf>, $sep);
     }
 
     // Filter the list of items to just the images.
@@ -313,16 +330,119 @@ HTMLDOCUMENT;
   // Select selected images.
   $result = UrlDecode($result);
   $result = RegexReplace($result, '\?|=on&?', '|');
-  $result = FormatList($result, 'dents', '|');
+  $G_RESULTS = FormatList($result, 'dents', '|');
+/************************************************************ END showPreview */
 
-  if ($result != '') {
-    SelectItems $result, 2, 1, 'n', 'a';
+
+"-" //--------------------------------------------------------------------------
+
+
+/*******************************************************************************
+** Preview & Filter Images
+**   Shows the preview then filters the selected images.
+*******************************************************************************/
+"Preview && &Filter Images : filter"
+  Sub 'showPreview';
+  Global $G_RESULTS;
+
+  if ($G_RESULTS != '') {
+    $vf = '';
+    foreach ($item, $G_RESULTS, '|') {
+      if ($item == '') { continue; }
+
+      $vf = $vf . '|' . Quote(GetPathComponent($item, 'File'));
+      Filter SubStr($vf, 1), 1;
+    }
+  }
+/***************************************************************** END filter */
+
+
+/*******************************************************************************
+** Preview & Paper Folder Images
+**   Shows the preview then creates a paper folder for the selected images.
+*******************************************************************************/
+"Preview && P&aper Folder Images : paperFolder"
+  Sub 'showPreview';
+  Global $G_RESULTS;
+
+  if ($G_RESULTS != '') {
+    if (0 == Exists(<xypaper>)) {
+      New(<xypaper>, 'dir',, 'u');
+    }
+    $pf = InputFile(<xypaper>, 'txt', 'Save to Paper Folder');
+    PaperFolder($pf, $G_RESULTS, '|', 'nl');
+  }
+/************************************************************ END paperFolder */
+
+
+/*******************************************************************************
+** Preivew & Preview & Preview Images
+**   Shows the preview then shows the preview again for the selected images.
+**   All the way down.
+*******************************************************************************/
+"Preview && Pr&eview && Preview Images : narrow"
+  Sub 'showPreview';
+  Global $G_RESULTS;
+
+  while ($G_RESULTS != '') {
+    Global $G_IMAGES = $G_RESULTS;
+    Sub 'showPreview';
+  }
+/***************************************************************** END narrow */
+
+
+/*******************************************************************************
+** Preview & Select Images
+**   Shows the preview then selects the selected images.
+*******************************************************************************/
+"Preview && &Select Images : select"
+  Sub 'showPreview';
+  Global $G_RESULTS;
+
+  if ($G_RESULTS != '') {
+    SelectItems $G_RESULTS, 2, 1, 'n', 'a';
     $cnt = Get('CountSelected');
     Status 'Selected ' . $cnt . ' item' . (($cnt == 1) ? '' : 's') . '.',, 'ready';
   }
-/*********************************************************** END imagePreview */
+/***************************************************************** END select */
 
 
+/*******************************************************************************
+** Preview & Spot Images
+**   Shows the preview then spots the selected images.
+*******************************************************************************/
+"Preview && Sp&ot Images : spot"
+  Sub 'showPreview';
+  Global $G_RESULTS;
+
+  if ($G_RESULTS != '') {
+    $vf = '';
+    foreach ($item, $G_RESULTS, '|') {
+      if ($item == '') { continue; }
+
+      $vf = $vf . '|' . GetPathComponent($item, 'File');
+      goto '>>' . $vf;
+    }
+  }
+/***************************************************************** END filter */
+
+/*******************************************************************************
+** Preview & Zip Images
+**   Shows the preview then creates a Zip archive of the selected images.
+*******************************************************************************/
+"Preview && &Zip Images : archive"
+  Sub 'showPreview';
+  Global $G_RESULTS;
+
+  if ($G_RESULTS != '') {
+    $zip = InputFile(<curpath>, 'zip', 'Save to Zip Archive');
+    $zip = Zip_Add($zip, $G_RESULTS, '|');
+    goto $zip;
+  }
+/**************************************************************** END archive */
+
+
+"- : _-" //---------------------------------------------------------------------
 "- : _-" //---------------------------------------------------------------------
 
 
@@ -394,92 +514,10 @@ Image Limit: $G_IMAGE_LIMIT$dLimit
 Filters: $dFilters
 $G_FILTERS
 TEXT;
-/********************************************************** END _showOptions */
+/*********************************************************** END _showOptions */
 
 
 "- : _-" //---------------------------------------------------------------------
-
-
-/*******************************************************************************
-** Adjust Filters
-**   Allows user to configure the list of filters used for determining what
-**   files are images and should be displayed.
-**
-**   Generally, this should be set to all images that the system can display
-**   within Internet Explorer.
-*******************************************************************************/
-"Adjust &Filters : _adjustFilters"
-  // Get default value.
-  Sub '_getDefaults';
-  Global $G_FILTERS;
-
-  // Get curent value.
-  if  (   IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS)
-        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS
-      )
-  {
-    $filters = $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
-  } else {
-    $filters = $G_FILTERS;
-  }
-
-  // Prompt user.
-  $filters = Input('Images Filters', 'One filter per line. Delete all to use defaults.', $filters, 'm');
-
-  // Clean up filters.
-  $filters = FormatList($filters, 'dents', <crlf>);
-  $default = FormatList($G_FILTERS, 'dents', <crlf>);
-
-  // Update stored value.
-  if ($filters == '' || $filters == $default) {
-    unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
-    Status 'Set image filters to defaults.',, 'ready';
-  } else {
-    perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS = $filters;
-    Status 'Set image filters.',, 'ready';
-  }
-/******************************************************** END _adjustFilters */
-
-
-/*******************************************************************************
-** Adjust Size of Preview Window
-**   Allows user to configure the size of the preview window.
-*******************************************************************************/
-"Adjust &Size of Preview Window : _adjustSize"
-  // Get default value.
-  Sub '_getDefaults';
-  Global $G_PREVIEW_SIZE;
-
-  // Get current value.
-  if  (   IsSet($P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE)
-        && '' != $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE
-      )
-  {
-    $size = $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
-  } else {
-    $size = $G_PREVIEW_SIZE;
-  }
-
-  // Prompt user.
-  $size = Input('Preview Window Size', <<<MSG
-Width x Height of Preview Window in pixels.
-Percentages of screen are also supported.
-Default value is $G_PREVIEW_SIZE.
-MSG
-  , $size, 's');
-
-  // Validate.
-  $size = RegexReplace($size, '[^0-9x%]');
-
-  // Update stored value.
-  if ($size == '' || $size == $G_PREVIEW_SIZE || $size UnLikeI '*x*') {
-    unset $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
-    Status 'Set preview window size to default: ' . $G_PREVIEW_SIZE,, 'ready';
-  } else {
-    perm $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE = $size;
-    Status 'Set preview window size to: ' . $size,, 'ready';
-  }
-/*********************************************************** END _adjustSize */
 
 
 /*******************************************************************************
@@ -544,7 +582,48 @@ MSG
     perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__COLORS = $newColors;
     Status 'Set colors to: ' . $newColors,, 'ready';
   }
-/********************************************************* END _adjustColors */
+/********************************************************** END _adjustColors */
+
+
+/*******************************************************************************
+** Adjust Filters
+**   Allows user to configure the list of filters used for determining what
+**   files are images and should be displayed.
+**
+**   Generally, this should be set to all images that the system can display
+**   within Internet Explorer.
+*******************************************************************************/
+"Adjust F&ilters : _adjustFilters"
+  // Get default value.
+  Sub '_getDefaults';
+  Global $G_FILTERS;
+
+  // Get curent value.
+  if  (   IsSet($P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS)
+        && '' != $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS
+      )
+  {
+    $filters = $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
+  } else {
+    $filters = $G_FILTERS;
+  }
+
+  // Prompt user.
+  $filters = Input('Images Filters', 'One filter per line. Delete all to use defaults.', $filters, 'm');
+
+  // Clean up filters.
+  $filters = FormatList($filters, 'dents', <crlf>);
+  $default = FormatList($G_FILTERS, 'dents', <crlf>);
+
+  // Update stored value.
+  if ($filters == '' || $filters == $default) {
+    unset $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS;
+    Status 'Set image filters to defaults.',, 'ready';
+  } else {
+    perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__FILTERS = $filters;
+    Status 'Set image filters.',, 'ready';
+  }
+/********************************************************* END _adjustFilters */
 
 
 /*******************************************************************************
@@ -581,7 +660,48 @@ MSG
     perm $P_THEQWERTY_HTML_IMAGE_PREVIEW__IMAGE_LIMIT = $limit;
     Status 'Set image limit to: ' . $limit,, 'ready';
   }
-/************************************************************ END _adjustCap */
+/************************************************************* END _adjustCap */
+
+
+/*******************************************************************************
+** Adjust Window Size
+**   Allows user to configure the size of the preview window.
+*******************************************************************************/
+"Adjust &Window Size : _adjustSize"
+  // Get default value.
+  Sub '_getDefaults';
+  Global $G_PREVIEW_SIZE;
+
+  // Get current value.
+  if  (   IsSet($P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE)
+        && '' != $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE
+      )
+  {
+    $size = $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
+  } else {
+    $size = $G_PREVIEW_SIZE;
+  }
+
+  // Prompt user.
+  $size = Input('Preview Window Size', <<<MSG
+Width x Height of Preview Window in pixels.
+Percentages of screen are also supported.
+Default value is $G_PREVIEW_SIZE.
+MSG
+  , $size, 's');
+
+  // Validate.
+  $size = RegexReplace($size, '[^0-9x%]');
+
+  // Update stored value.
+  if ($size == '' || $size == $G_PREVIEW_SIZE || $size UnLikeI '*x*') {
+    unset $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE;
+    Status 'Set preview window size to default: ' . $G_PREVIEW_SIZE,, 'ready';
+  } else {
+    perm $P_THQWERTY_HTML_IMAGE_PREVIEW__PREVIEW_SIZE = $size;
+    Status 'Set preview window size to: ' . $size,, 'ready';
+  }
+/************************************************************ END _adjustSize */
 
 
 "- : _-" //---------------------------------------------------------------------
