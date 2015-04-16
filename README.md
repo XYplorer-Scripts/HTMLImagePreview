@@ -2,7 +2,7 @@
 
 **Displays images in an HTML preview for [XYplorer](http://xyplorer.com/index.php).**
 
-This script generates an HTML file to quickly preview images, and allows selecting images from this display. This exists mostly as an alternative to XYplorer's native preview and thumbnail features with the ability to show animated GIFs.
+This script generates an HTML file to quickly preview images, allows selecting images from this display, and then can perform common XYplorer actions on those images. This exists mostly as an alternative to XYplorer's native preview and thumbnail features with the ability to show animated GIFs.
 
 ----------
 
@@ -10,7 +10,7 @@ This script generates an HTML file to quickly preview images, and allows selecti
 1. [Download](./HTMLImagePreview.xys?raw=true)
 2. Run
 3. If the current selection or list pane contains images they will be shown.
-4. [Optional] There are some configuration options which can be access by loading the script with ` Load 'HTMLImagePreview.xys', '*', 'f';`
+4. [Optional] There are some configuration options which can be accessed by loading the script with ` Load 'HTMLImagePreview.xys', '*', 'f';`
 
 #### Requires
 + XYplorer with scripting enabled.
@@ -27,6 +27,13 @@ This script generates an HTML file to quickly preview images, and allows selecti
 ----------
 
 #### Release Notes
++ v 2.0 - 2015-03-31 15:00z
+    - Adds global for overriding filter configuration.
+    - Separates showing preview from the action taken on the checked images.
+    - Adds scripts for various actions (selecting, filtering, archiving, etc.).
+    - Changes default action from selecting to showing a menu of actions.  
+      To restore the old behavior use the *select* script: `Load 'HTMLImagePreview', 'select', 'f';`
+    - Changes menu order and access keys.
 + v 1.3 - 2015-03-30 18:00z
     - Fixes problems with escaping quotes and ampersands.
     - Fixes titlebox being too small.
