@@ -27,6 +27,8 @@ This script generates an HTML file to quickly preview images, allows selecting i
 ----------
 
 #### Release Notes
++ v 2.1 - 2015-03-31 17:50z
+    - Adds global for specifying items which will be filtered before display.
 + v 2.0 - 2015-03-31 15:00z
     - Adds global for overriding filter configuration.
     - Separates showing preview from the action taken on the checked images.
