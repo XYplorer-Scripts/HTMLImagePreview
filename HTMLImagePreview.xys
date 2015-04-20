@@ -114,8 +114,6 @@ LIMITMSG;
     if ($image == '') { continue; }
     // Get & escape file name.
     $title = ReplaceList(GetPathComponent($image, 'file'), '&', '&amp;', '|');
-    // Escape file path.
-    $image = Replace($image, '&', '&amp;');
 
     $imageDivs = <<<IMAGEDIV
 $imageDivs
