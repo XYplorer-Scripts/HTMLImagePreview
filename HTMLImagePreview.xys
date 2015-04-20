@@ -5,8 +5,8 @@ Creates an HTML page for previewing and selecting images.
 
 [ABOUT]
 Author    = TheQwerty
-Version   = 2.1
-Date      = 2015-03-31 17:50z
+Version   = 2.1.1
+Date      = 2015-04-20 20:34z
 Requires  = XYplorer v15.00.0000
 Source    = https://github.com/XYplorer-Scripts/HTMLImagePreview
 
