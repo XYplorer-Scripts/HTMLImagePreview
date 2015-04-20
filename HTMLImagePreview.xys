@@ -110,7 +110,10 @@ LIMITMSG;
 
   // Build up the div blocks for each image.
   $imageDivs = '';
+  $idx = 0;
   foreach ($image, $images, $sep) {
+    $idx++;
+
     if ($image == '') { continue; }
     // Get & escape file name.
     $title = ReplaceList(GetPathComponent($image, 'file'), '&', '&amp;', '|');
@@ -119,8 +122,8 @@ LIMITMSG;
 $imageDivs
         <div class='box'>
           <span class='handle'>&nbsp;</span>
-          <input class='cb' type='checkbox' name="$image" id="$image">
-            <label class='boxInner' for="$image">
+          <input class='cb' type='checkbox' name="$idx" id="$idx">
+            <label class='boxInner' for="$idx">
               <img src="$image" />
               <div class='titleBox'>$title</div>
             </label>
@@ -363,7 +366,17 @@ HTMLDOCUMENT;
   // Select selected images.
   $result = UrlDecode($result);
   $result = RegexReplace($result, '\?|=on&?', '|');
-  $G_RESULTS = FormatList($result, 'det', '|');
+  $result = FormatList($result, 'det', '|');
+
+  // Convert selected indexes into paths.
+  $results = '';
+  foreach ($idx, $result, '|') {
+    $item = GetToken($images, $idx, $sep);
+    if ($item != '') {
+      $results = $results . $item . '|';
+    }
+  }
+  $G_RESULTS = FormatList($results, 'det', '|');
 /************************************************************ END showPreview */
 
 
