@@ -27,6 +27,11 @@ This script generates an HTML file to quickly preview images, allows selecting i
 ----------
 
 #### Release Notes
++ v 2.2 - 2015-05-18 13:14z
+    - Adds ability to rotate previewed images.
+    - Adds ability to re-order images via drag'n'drop.
+    - Increases number of images which can be returned by preview.
+    - Fixes escaping of amperands within image path.
 + v 2.1 - 2015-03-31 17:50z
     - Adds global for specifying items which will be filtered before display.
 + v 2.0 - 2015-03-31 15:00z
