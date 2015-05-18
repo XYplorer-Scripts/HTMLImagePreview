@@ -22,7 +22,7 @@ This script generates an HTML file to quickly preview images, allows selecting i
 #### Notes
 + Developed in response to this [wish](http://www.xyplorer.com/xyfc/viewtopic.php?f=5&t=13675).
 + Discussion [thread](http://www.xyplorer.com/xyfc/viewtopic.php?f=7&t=13690) in XYplorer's Forums.
-+ Developed by [TheQwerty](https://github.com/TheQwerty) - [contact](http://www.xyplorer.com/xyfc/memberlist.php?mode=viewprofile&u=438) me.
++ Developed by [TheQwerty](https://github.com/TheQwerty) - [contact](http://www.xyplorer.com/xyfc/memberlist.php?mode=viewprofile&u=438).
 
 ----------
 
