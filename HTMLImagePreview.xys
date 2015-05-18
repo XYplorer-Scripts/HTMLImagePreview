@@ -197,10 +197,15 @@ IMAGEDIV;
         right:0;
         bottom:0;
         height:32px;
-        text-align:right;
         padding: 8px;
         background: $bodyBGColor;
         z-index:2;
+      }
+      .buttons .left {
+        float:left;
+      }
+      .buttons .right {
+        float:right;
       }
       #submit {
         margin-left:20px;
@@ -226,6 +231,21 @@ IMAGEDIV;
       .boxInner img {
         max-width: 100%;
         max-height: 100%;
+      }
+      .rotateCW {
+        -ms-transform: rotate(90deg);
+        filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=1);
+        transform: rotate(90deg);
+      }
+      .rotateCCW {
+        -ms-transform: rotate(-90deg);
+        filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=3);
+        transform: rotate(-90deg);
+      }
+      .rotateFlip {
+        -ms-transform: rotate(180deg);
+        filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=2);
+        transform: rotate(180deg);
       }
       .boxInner .titleBox {
         position: absolute;
@@ -287,7 +307,7 @@ IMAGEDIV;
     function check(v) {
       var a = document.getElementsByTagName('input');
       for(var i=0,j=a.length;i<j;i++){
-        if (a[i].type == 'checkbox'){
+        if (a[i].type == 'checkbox' && a[i].className == 'cb'){
           a[i].checked = v;
         }
       }
@@ -296,7 +316,7 @@ IMAGEDIV;
     function invert() {
       var a = document.getElementsByTagName('input');
       for(var i=0,j=a.length;i<j;i++){
-        if (a[i].type == 'checkbox'){
+        if (a[i].type == 'checkbox' && a[i].className == 'cb'){
           a[i].checked = !a[i].checked;
         }
       }
@@ -304,6 +324,26 @@ IMAGEDIV;
 
     function checkAll() { check(true); }
     function checkNone() { check(false); }
+
+    function rotate(newClass) {
+      var cb = document.getElementById('rotateSelection');
+      if (cb.checked) {
+        var a = document.getElementsByTagName('input');
+        for(var i=0,j=a.length;i<j;i++){
+          if (a[i].type == 'checkbox' && a[i].className == 'cb' && a[i].checked){
+            var ai = a[i].parentElement.getElementsByTagName('img');
+            if (ai.length > 0) {
+              ai[0].className = newClass;
+            }
+          }
+        }
+      } else {
+        var imgs = document.getElementsByTagName('img');
+        for(var i=0,j=imgs.length;i<j;i++){
+          imgs[i].className = newClass;
+        }
+      }
+    }
   </script>
   <body class='no-touch'>
     $limitDiv
@@ -312,10 +352,19 @@ IMAGEDIV;
         $imageDivs
       </div>
       <div class='buttons'>
-        <input type='button' value='All' onclick='checkAll();' />
-        <input type='button' value='None' onclick='checkNone();' />
-        <input type='button' value='Invert' onclick='invert();' />
-        <input type='submit' value='OK' id='submit' />
+        <span class="left">
+          <input type='button' value='Normal' onclick='rotate("");' />
+          <input type='button' value='90&deg;' onclick='rotate("rotateCW");' />
+          <input type='button' value='180&deg;' onclick='rotate("rotateFlip");' />
+          <input type='button' value='270&deg;' onclick='rotate("rotateCCW");' />
+          <input type='checkbox' id='rotateSelection' /><label for='rotateSelection'>Selection Only</label>
+        </span>
+        <span class="right">
+          <input type='button' value='All' onclick='checkAll();' />
+          <input type='button' value='None' onclick='checkNone();' />
+          <input type='button' value='Invert' onclick='invert();' />
+          <input type='submit' value='OK' id='submit' />
+        </span>
       </div>
     </form>
     <script src='https://cdn.rawgit.com/bevacqua/dragula/master/dist/dragula.min.js'></script>
